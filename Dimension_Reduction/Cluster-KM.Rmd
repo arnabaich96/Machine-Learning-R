@@ -1,0 +1,213 @@
+---
+title: "K-means Clustering"
+author: "Arnab Aich"
+output: 
+  html_document:
+    toc: true
+    highlight: tango
+    code_folding: hide
+    fig_width: 8
+    fig_height: 6
+    fig_align: "center"
+    self_contained: true
+    toc_depth: 3
+    toc_float:
+      collapsed: true
+---
+
+<link rel="stylesheet" type="text/css" href="../styles.css">
+
+```{r,include=FALSE}
+knitr::opts_chunk$set(
+	message = FALSE,
+	warning = FALSE,
+	comment = NA,
+	echo = TRUE
+)
+```
+
+# Introduction
+
+In this document, we will implement K-means clustering and compare it with Multivariate Gaussian models on **x1.txt**, **x2.txt** and **pts.txt** dataset. K-means clustering is an unsupervised learning algorithm that is used to partition a dataset into K clusters. The algorithm works by iteratively assigning data points to the nearest cluster center and updating the cluster centers based on the mean of the data points assigned to each cluster. Multivariate Gaussian models are used to model the data distribution and estimate the parameters of the clusters.
+
+
+## Loading required Libraries 
+```{r  include=FALSE}
+packages = c("readr","dplyr","ggplot2","patchwork","mclust","factoextra","here","sClust","kernlab")
+lapply(packages, require, character.only = TRUE)
+```
+
+**Mclust :** *Model-based clustering based on parameterized finite Gaussian mixture models. Models are estimated by EM algorithm initialized by hierarchical model-based agglomerative clustering. The optimal model is then selected according to BIC (Based on R documentation).*
+
+# 1.
+
+## a)
+
+-   Import Data
+
+```{r}
+x1 <- read.csv(here("Datasets/x1.txt"),col.names = c("X1","X2"))
+```
+
+-   K means clustering and plot for Initial Clusters
+
+```{r}
+set.seed(1)
+K_mean = kmeans(x1,centers = 2)
+init = fviz_cluster(K_mean,data = x1,show.clust.cent = TRUE,stand = TRUE,geom = "point",
+             ellipse.type = "convex", main = "Initial K-Means plot",ellipse = FALSE,  
+             ggtheme = theme_bw())
+```
+
+-   Final clustering using Multivariate Gaussian models
+
+```{r}
+set.seed(2)
+cluster = Mclust(x1,G=2,initialization = list(K_mean$centers)) 
+final = fviz_cluster(cluster,data = x1,show.clust.cent = TRUE,stand = TRUE,geom = "point",
+             ellipse.type = "convex", main = "Final plot",ellipse = FALSE, 
+             ggtheme = theme_bw())
+init + final
+
+rm(init)
+rm(final)
+rm(cluster)
+rm(K_mean)
+```
+
+## b)
+
+-   Import Data
+
+```{r}
+
+x2 <-read.csv(here("Datasets/x2.txt"),col.names = c("X1","X2"))
+```
+
+-   K-means clustering and plot for Initial Clusters
+
+```{r}
+set.seed(3)
+K_mean = kmeans(x2,centers = 2)
+init = fviz_cluster(K_mean,data = x1,show.clust.cent = TRUE,stand = TRUE,geom = "point",
+             ellipse.type = "convex", main = "Initial K-Means plot", ellipse = FALSE,  
+             ggtheme = theme_bw())
+```
+
+-   Final clustering using Multivariate Gaussian models
+
+```{r}
+set.seed(4)
+cluster = Mclust(x2,G=2,initialization = list(K_mean$centers)) 
+final = fviz_cluster(cluster,data = x2,show.clust.cent = TRUE,stand = TRUE,geom = "point",
+             ellipse.type = "convex", main = "Final plot",ellipse = FALSE, 
+             ggtheme = theme_bw())
+init + final
+
+rm(init)
+rm(final)
+rm(cluster)
+rm(K_mean)
+```
+
+## c)
+
+-   Import Data
+
+```{r}
+pts <-  read.csv(here("Datasets/pts.txt"),col.names = c("X1","X2"))
+```
+
+-   K-means clustering and plot for Initial Clusters
+
+```{r}
+set.seed(5)
+K_mean = kmeans(pts,centers = 3)
+init = fviz_cluster(K_mean,data = pts,show.clust.cent = TRUE,stand = TRUE,geom = "point",
+             ellipse.type = "convex",  main = "Initial K-Means plot",ellipse = FALSE,  
+             ggtheme = theme_bw())
+```
+
+-   Final clustering using Multivariate Gaussian models
+
+```{r}
+set.seed(6)
+cluster = Mclust(pts,G=3,initialization = list(K_mean$centers)) 
+final = fviz_cluster(cluster,data = pts,show.clust.cent = TRUE,stand = TRUE,geom = "point",
+             ellipse.type = "convex", main = "Final plot",ellipse = FALSE, 
+             ggtheme = theme_bw())
+init + final
+
+rm(init)
+rm(final)
+rm(cluster)
+rm(K_mean)
+```
+
+## d)
+
+-   K-means clustering and plot for Initial Clusters
+
+```{r}
+set.seed(7)
+K_mean = kmeans(pts,centers = 10)
+init = fviz_cluster(K_mean,data = pts,show.clust.cent = TRUE,stand = TRUE,geom = "point",
+             ellipse.type = "convex",  main = "Initial K-Means plot",ellipse = FALSE,  
+             ggtheme = theme_bw())
+```
+
+-   Final clustering using Multivariate Gaussian models
+
+```{r}
+set.seed(8)
+cluster = Mclust(pts,G=10,initialization = list(K_mean$centers)) 
+final = fviz_cluster(cluster,data = pts,show.clust.cent = TRUE,stand = TRUE,geom = "point",
+             ellipse.type = "convex", main = "Final plot",ellipse = FALSE, 
+             ggtheme = theme_bw())
+init + final
+
+rm(init)
+rm(final)
+rm(cluster)
+rm(K_mean)
+```
+
+# 2.
+
+**specc: Spectral Clustering:** *A spectral clustering algorithm. Clustering is performed by embedding the data into the subspace of the eigenvectors of an affinity matrix.*
+
+## a)
+
+```{r}
+Cluster = as.factor(specc(as.matrix(x1),centers = 2))
+data = data.frame(Cluster,as.matrix(x1))
+ggplot() +
+  geom_point(data = data, 
+             mapping = aes(x = X1, y = X2,colour = Cluster))+theme_bw()
+rm(data)
+rm(Cluster)
+```
+
+## b)
+
+```{r}
+Cluster = as.factor(specc(as.matrix(x2),centers = 2,kpar = list(sigma=0.15)))
+data = data.frame(Cluster,as.matrix(x2))
+ggplot() +
+  geom_point(data = data, 
+             mapping = aes(x = X1, y = X2,colour = Cluster))+theme_bw()
+rm(data)
+rm(Cluster)
+```
+
+## c)
+
+```{r}
+Cluster = as.factor(specc(as.matrix(pts),centers = 3))
+data = data.frame(Cluster,as.matrix(pts))
+ggplot() +
+  geom_point(data = data, 
+             mapping = aes(x = X1, y = X2,colour = Cluster))+theme_bw()
+rm(data)
+rm(Cluster)
+```

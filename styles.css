@@ -1,0 +1,168 @@
+/* Global Styles */
+body {
+    font-family: 'Arial', sans-serif;
+    font-size: 16px;
+    background-color: #ff9;
+    color: black;
+    line-height: 1.75;
+    margin: 0;
+    padding: 10px;
+}
+.title {
+    color: #7C0A02;
+    text-align: center;
+    font-size: 32px;
+    font-weight: bold;
+  }
+
+.author {
+    text-align: center;
+    font-size:30px;
+    color: #7C0A02;
+  }
+
+TOC {
+    color: #7C0A02;
+    font-size: 10px;
+    font-weight: bold;
+  }
+
+  .container-fluid {
+    max-width: 90%;
+  }
+
+/* Headers */
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Georgia', serif;
+    color: #800000; /* Garnet color */
+    font-weight: bold;
+}
+
+h1 {
+    font-size: 28px;
+    margin-bottom: 20px;
+    color: #C6A;
+}
+
+h2 {
+    font-size: 25px;
+    margin-bottom: 15px;
+        color: purple;
+}
+
+h3 {
+    font-size: 22px;
+    margin-bottom: 10px;
+    color: darkorange;
+}
+
+h4, h5, h6 {
+    font-size: 18px;
+}
+
+/* Paragraphs */
+p {
+    font-size: 15px;
+    margin-bottom: 20px;
+    text-align: justify;
+}
+
+/* Links */
+a {
+    color: #ffcc00; /* Gold color */
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* Code Blocks */
+pre, code {
+    background-color: #f4f4f4;
+    padding: 10px;
+    border-radius: 5px;
+    font-size: 0.9em;
+    font-family: 'Courier New', monospace;
+}
+
+/* Tables */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+    font-size: 1em;
+}
+
+table, th, td {
+    border: 1px solid #ddd;
+}
+
+th, td {
+    padding: 12px;
+    text-align: left;
+}
+
+th {
+    background-color: #800000;
+    color: white;
+}
+
+tr:nth-child(even) {
+    background-color: #f2f2f2;
+}
+
+/* Blockquotes */
+blockquote {
+    font-size: 1.2em;
+    color: #555;
+    border-left: 5px solid #800000;
+    padding-left: 20px;
+    margin-left: 0;
+    background-color: #f9f9f9;
+    padding: 10px;
+}
+
+/* Lists */
+ul, ol {
+    margin-bottom: 20px;
+    font-size: 1.1em;
+}
+
+li {
+    margin-bottom: 5px;
+}
+
+/* Visuals */
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0 auto 20px;
+}
+
+figure {
+    text-align: center;
+    margin: 0;
+}
+
+figcaption {
+    font-size: 0.9em;
+    color: #666;
+    margin-top: 10px;
+}
+
+/* Buttons */
+button {
+    background-color: #800000;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-size: 1em;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #b30000;
+}

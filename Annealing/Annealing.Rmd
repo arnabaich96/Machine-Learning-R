@@ -1,0 +1,250 @@
+---
+title: "Annealing for binary classification with logistic loss"
+author: "Arnab Aich"
+output: 
+  html_document:
+    toc: true
+    highlight: tango
+    code_folding: hide
+    fig_width: 8
+    fig_height: 6
+    fig_align: "center"
+    self_contained: true
+    toc_depth: 3
+    toc_float:
+      collapsed: true
+---
+
+<link rel="stylesheet" type="text/css" href="../styles.css">
+```{r,include=FALSE}
+knitr::opts_chunk$set(
+	message = FALSE,
+	warning = FALSE,
+	comment = NA,
+	echo = TRUE
+)
+```
+# Introduction
+In this document, we will implement a feature selection algorithm using simulated annealing on **Gisette** and **Madelon** dataset. Simulated annealing is a probabilistic optimization algorithm that is used to find the global minimum of a function. It is inspired by the process of annealing in metallurgy, where a material is heated and then slowly cooled to achieve a low-energy state. Simulated annealing works by iteratively exploring the solution space and accepting moves that decrease the objective function value, even if they increase it initially. This allows the algorithm to escape local minima and find the global minimum.
+
+
+## Loading required Libraries and functions
+```{r}
+packages = c("parallel","doParallel","doSNOW","readr","readsparse","dplyr","stargazer","caret","pROC","ggplot2","plotly","kableExtra","here")
+invisible(xfun::pkg_attach(packages))
+
+source(here("Annealing/Functions.R"))
+
+# number of features
+k_all = c(10,30,100,300,500)
+
+```
+
+
+# Gisette Data
+
+## ## Import and setup Dataset
+```{r}
+train_X <- read_table(here("Datasets/Gisette/gisette_train.data"),
+    col_names = FALSE)
+test_X <- read_table(here("Datasets/Gisette/gisette_valid.data"),
+    col_names = FALSE)
+train_Y <- read_csv(here("Datasets/Gisette/gisette_train.labels"),
+    col_names = FALSE)
+test_Y <- read_csv(here("Datasets/Gisette/gisette_valid.labels"),
+    col_names = FALSE)
+
+x_mean=as.numeric(colMeans(train_X[,-5001]))
+x_sd =as.numeric(apply(train_X[,-5001],2,sd))
+X = rbind(scale(train_X[, -5001],center=x_mean,scale=x_sd),
+          scale(test_X[, -5001],center=x_mean,scale=x_sd))
+X = X[, colSums(is.na(X)) == 0]
+X_train = X[1:6000, ]
+data_train = list(y = as.matrix(train_Y), x = as.matrix(X_train))
+X_test = X[6001:7000, ]
+data_test = list(y = as.matrix(test_Y), x = as.matrix(X_test))
+```
+
+## Training loss vs Iteration number for k = 300
+```{r}
+ggplotly(Loss_plot(data_train ,n_iter=300,k=300,s=0.001,mu=100))
+```
+
+
+## Train vs Test ROC plot
+
+```{r}
+ggplotly(Roc_plot(data_train,data_test,n_iter=300,eta=1/nrow(data_train$y),k=300,mu=100))
+
+```
+
+## Train and Test Missclasification Error vs Number of Features
+
+```{r}
+my.cluster <- makeCluster(5)
+registerDoParallel(my.cluster)
+clusterExport(my.cluster,c("annealing","data_train","data_test"),envir = .GlobalEnv)
+invisible(clusterEvalQ(my.cluster,
+                       {library(dplyr)
+                         library(stargazer)
+                         library(caret)
+                         library(pROC)
+                       }))
+R = parSapply(my.cluster,k_all,annealing,data_train, data_test,n_iter=300, eta=1/nrow(data_train$y), mu=100)
+stopCluster(my.cluster)
+D=data.frame(t(R))
+
+D %>%
+  kable(align = rep("c", ncol(D))) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width = F, position = "center")
+
+
+# Misclassification error vs feature
+
+ggplotly(ggplot(D,aes(x= as.numeric(unlist(D['Feature']))))+
+  geom_line(aes(y = as.numeric(unlist(D['Miss.Train'])),color = "Training"))+
+  geom_line(aes(y = as.numeric(unlist(D['Miss.Test'])),color = "Testing"))+
+  ylim(0,0.2) + ylab('Misclassification Error') + xlab('Number of Feature')
+)
+
+```
+
+```{r warning=FALSE, include=FALSE}
+rm(data_train)
+rm(data_test)
+rm(train_X)
+rm(test_X)
+rm(train_Y)
+rm(test_Y)
+rm(R)
+```
+
+
+# Madelon Data
+ 
+## Import and setup Dataset
+```{r}
+train_X<- read_table(here("Datasets/MADELON/madelon_train.data"),
+                col_names = FALSE)
+train_Y<- read_table(here("Datasets/MADELON/madelon_train.labels"),
+                col_names = FALSE)
+test_X <- read_table(here("Datasets/MADELON/madelon_valid.data"), 
+                col_names = FALSE)
+test_Y <- read_table(here("Datasets/MADELON/madelon_valid.labels"), 
+                col_names = FALSE)
+
+train_X=train_X[,-501]
+test_X=test_X[,-501]
+x_mean=as.numeric(colMeans(train_X))
+x_sd =as.numeric(apply(train_X,2,sd))
+
+X = rbind(scale(train_X,center=x_mean,scale=x_sd),
+          scale(test_X,center=x_mean,scale=x_sd))
+X = X[, colSums(is.na(X)) == 0]
+X_train = X[1:2000, ]
+data_train= list(y = as.matrix(train_Y), x = as.matrix(X_train))
+X_test = X[2001:2600, ]
+data_test = list(y = as.matrix(test_Y), x = as.matrix(X_test))
+```
+
+
+## Training loss vs Iteration number for k = 300
+```{r}
+ggplotly(Loss_plot(data_train ,n_iter=300,k=300,s=0.001,mu=100))
+```
+
+
+## Train vs Test ROC plot
+
+```{r}
+ggplotly(Roc_plot(data_train,data_test,n_iter=300,eta=1/nrow(data_train$y),k=300,mu=100))
+
+```
+
+## Train and Test Missclasification Error vs Number of Features
+
+```{r}
+my.cluster <- makeCluster(5)
+registerDoParallel(my.cluster)
+clusterExport(my.cluster,c("annealing","data_train","data_test"),envir = .GlobalEnv)
+invisible(clusterEvalQ(my.cluster,
+                       {library(dplyr)
+                         library(stargazer)
+                         library(caret)
+                         library(pROC)
+                       }))
+R = parSapply(my.cluster,k_all,annealing,data_train, data_test,n_iter=300, eta=1/nrow(data_train$y), mu=100)
+
+stopCluster(my.cluster)
+
+D=data.frame(t(R))
+
+D %>%
+  kable(align = rep("c", ncol(D))) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width = F, position = "center")
+
+
+# Misclassification error vs feature
+
+ggplotly(ggplot(D,aes(x= as.numeric(unlist(D['Feature']))))+
+  geom_line(aes(y = as.numeric(unlist(D['Miss.Train'])),color = "Training"))+
+  geom_line(aes(y = as.numeric(unlist(D['Miss.Test'])),color = "Testing"))+
+  ylim(0,0.2) + ylab('Misclassification Error') + xlab('Number of Feature')
+)
+
+```
+
+```{r warning=FALSE, include=FALSE}
+rm(data_train)
+rm(data_test)
+rm(train_X)
+rm(test_X)
+rm(train_Y)
+rm(test_Y)
+rm(R)
+```
+
+# Dexter Data
+
+  
+## Import and setup Dataset
+
+```{r}
+train_X <-read.csv(here("Datasets/dexter/dexter_train.csv"),header = FALSE)
+
+train_y <- as.matrix(read_csv(here("Datasets/dexter/dexter_train.labels"),
+                              col_names = FALSE))
+test_X <-read.csv(here("Datasets/dexter/dexter_valid.csv"),header = FALSE)
+test_y <- as.matrix(read_csv(here("Datasets/dexter/dexter_valid.labels"),
+                             col_names = FALSE))
+# train mean and sd
+x_mean=as.numeric(colMeans(as.matrix(train_X)))
+x_sd =as.numeric(apply(as.matrix(train_X),2,sd))
+
+# Rename labels
+train_y[train_y== -1] = 0
+test_y[test_y== -1] = 0
+#setup data
+train <- cbind(rep(1,nrow(train_X)),scale(train_X,x_mean,x_sd))
+test <- cbind(rep(1,nrow(test_X)),scale(test_X,x_mean,x_sd))
+
+X = rbind(train, test)
+X = X[, colSums(is.na(X)) == 0]
+colnames(X) <- NULL
+data_train = list(y=as.matrix(train_y),x=as.matrix(X[1:300,]))
+data_test= list(y=as.matrix(test_y),x=as.matrix(X[301:600,]))
+```
+
+## Training loss vs Iteration number for k = 300
+```{r}
+ggplotly(Loss_plot(data_train ,n_iter=300,k=300,s=0.001,mu=100))
+```
+
+
+## Train vs Test ROC plot
+
+```{r}
+ggplotly(Roc_plot(data_train,data_test,n_iter=300,eta=1/nrow(data_train$y),k=300,mu=100))
+
+```
+

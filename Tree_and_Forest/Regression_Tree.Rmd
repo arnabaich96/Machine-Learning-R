@@ -1,0 +1,397 @@
+---
+title: "Regression Tree and Random Forest"
+author: "Arnab Aich"
+output: 
+  html_document:
+    toc: true
+    highlight: tango
+    code_folding: hide
+    fig_width: 8
+    fig_height: 6
+    fig_align: "center"
+    self_contained: true
+    toc_depth: 3
+    toc_float:
+      collapsed: true
+editor_options: 
+  chunk_output_type: console
+---
+
+<link rel="stylesheet" type="text/css" href="../styles.css">
+
+
+```{r include=FALSE}
+knitr::opts_chunk$set(
+	message = FALSE,
+	warning = FALSE,
+	comment = NA,
+	echo = TRUE
+)
+
+lapply(c("dplyr", "ggplot2", "randomForest", "rpart", "caret", "semTools", "readr","plotly","kableExtra", "knitr"), require, character.only = TRUE)
+  set.seed(123)
+```
+
+# Introduction
+In this report, we will be using the **Abalone dataset** to perform the following tasks:
+
+
+1. Fit a null model to the data and calculate the average training and testing MSE.
+2. Fit an OLS regression model with a penalty of 0.001 and calculate the average training and testing MSE.
+3. Fit a regression tree model with a maximum depth of 7 and calculate the average training and testing MSE.
+4. Fit a random forest model with the number of trees equal to 3, 10, 30, 100, and 300 and calculate the average training and testing MSE.
+
+
+```{r load-abalone-data}
+# Load the dataset from the local file
+library(here)
+abalone <- read_csv(here("Datasets","abalone.csv"), col_names  = FALSE)
+
+attach(abalone)
+
+```
+
+
+# Null Model 
+The null model is a simple model that predicts the average value of the target variable for all observations. In this case, we will calculate the average value of the target variable (number of rings) and use it as the prediction for all observations. We will then calculate the mean squared error (MSE) for both the training and testing datasets.
+
+```{r comment=NA}
+NullFunction <- function(data1, n_split = 15, prob_train = 0.9) {
+  # Split the dataset
+  data_splits <- splitSample(data1, div = n_split)
+  
+  # Helper function to calculate MSE
+  calculateMSE <- function(D) {
+    sample <- sample(c(TRUE, FALSE), nrow(D), replace = TRUE, prob = c(prob_train, 1 - prob_train))
+    d_train <- D[sample, ]
+    d_test  <- D[!sample, ]
+    y_bar <- mean(d_train[, 8])
+    
+    mse_train <- mean((d_train[, 8] - y_bar) ^ 2)
+    mse_test  <- mean((d_test[, 8] - y_bar) ^ 2)
+    
+    list(train_mse = mse_train, test_mse = mse_test)
+  }
+  
+  # Apply the helper function to each split
+  results <- lapply(data_splits, calculateMSE)
+  
+  # Extracting and averaging MSE values
+  train_MSEs <- sapply(results, function(x) x$train_mse)
+  test_MSEs <- sapply(results, function(x) x$test_mse)
+  
+  avg_MSE <- data.frame(
+    Train = mean(train_MSEs),
+    Test = mean(test_MSEs)
+  )
+  
+  MSE_table <- data.frame(
+    Split = seq_len(n_split),
+    Train = train_MSEs,
+    Test = test_MSEs
+  )
+  
+  list(avg_MSE = avg_MSE, MSE_table = MSE_table)
+}
+
+null_model <- NullFunction(abalone)
+```
+
+The average training and testing MSE for the null model are as follows:
+
+```{r}
+null_model$avg_MSE %>%  kbl(align = rep("c",2)  ) %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"),full_width = F)
+```
+
+The table below shows the training and testing MSE for each split:
+
+```{r}
+null_model$MSE_table %>% kbl(align = rep("c", ncol(null_model$MSE_table))) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), 
+                full_width = F, position = "center")
+```
+
+
+# OLS with penalty = 0.001
+
+The Ordinary Least Squares (OLS) regression model is a linear regression model that minimizes the sum of squared differences between the observed and predicted values. In this case, we will fit an OLS regression model with a penalty of 0.001 and calculate the average training and testing MSE.
+
+```{r comment=NA}
+OLS = function(data1, n_split=15, prob_train=0.9, lambda = 0.001) {  
+  # Split the data using the provided function
+  data = splitSample(data1, div = n_split)
+  
+  # Function to calculate OLS coefficients with regularization
+  b_hat <- function(y, X, lambda1=lambda) {
+    p = ncol(X)
+    b = solve(t(X) %*% X + diag(lambda1, p)) %*% t(X) %*% y
+    rownames(b) = NULL
+    return(b)
+  }
+
+  # Function to apply OLS for each split
+  F = function(D) {
+    # Split into training and test sets
+    sample <- sample(c(TRUE, FALSE), nrow(D), replace = TRUE, prob = c(prob_train, 1 - prob_train))
+    d_train = D[sample, ]
+    d_test = D[!sample, ]
+    
+    # Extract y and X for both train and test sets
+    y_train = d_train[, 8]
+    X_train = as.matrix(d_train[, -8])
+    y_test = d_test[, 8]
+    X_test = as.matrix(d_test[, -8])
+    
+    # Estimate coefficients using the training data
+    beta_hat = b_hat(y_train, X_train)
+    
+    # Predictions for train and test sets
+    y_hat_train = X_train %*% beta_hat
+    y_hat_test = X_test %*% beta_hat
+    
+    # Calculate residuals and mean squared error (MSE)
+    e_train = y_train - y_hat_train
+    e_test = y_test - y_hat_test
+    
+    # Store MSE and R-squared
+    my.list = list()
+    my.list$train_mse = mean(e_train^2)
+    my.list$test_mse = mean(e_test^2)
+    return(my.list)
+  }
+  
+  # Apply the OLS function to all data splits
+  V = lapply(data, F)
+  
+  # Initialize arrays to store MSE values for each split
+  train_MSE = array()
+  test_MSE = array()
+  
+  # Loop over splits to extract MSE values
+  for (i in 1:n_split) {
+    train_MSE[i] = V[[i]]$train_mse
+    test_MSE[i] = V[[i]]$test_mse
+  }
+  
+  # Create a list to store the final results
+  my.list = list()
+  
+  # Calculate the average MSE for train and test sets
+  my.list$avg_MSE = data.frame(Train = mean(train_MSE), Test = mean(test_MSE))
+  
+  # Create an MSE table with values for each split
+  my.list$MSE_table = data.frame(Split = seq(1, n_split), Train = train_MSE, Test = test_MSE)
+  
+  return(my.list)
+}
+
+ols_model <- OLS(abalone)
+```
+
+The average training and testing MSE for the OLS regression model with a penalty of 0.001 are as follows:
+
+```{r}
+ols_model$avg_MSE %>%  kbl(align = rep("c",2)  ) %>% kable_styling(full_width = F,bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+```
+
+The table below shows the training and testing MSE for each split:
+
+```{r}
+ols_model$MSE_table %>% kbl(align = rep("c", ncol(ols_model$MSE_table))) %>% 
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), 
+                full_width = F, position = "center")
+```
+
+# Regression tree with depth up-to 7
+
+Regression trees are a non-parametric supervised learning method used for regression tasks. In this case, we will fit a regression tree model with a maximum depth of 7 and calculate the average training and testing MSE. 
+
+
+```{r comment=NA}
+Reg_Tree = function(data, depth = 7, prob_train = 0.9, n_split = 15) {
+  # Split the data into n_split groups using the splitSample function
+  DATA = splitSample(data, div = n_split)
+  
+  # Define a function to fit the decision tree model and calculate MSE and R-squared
+  DT <- function(n, data, i) {
+    data = data.frame(data[[i]])  # Extract the ith data split
+    
+    # Split the data into training and test sets
+    sample <- sample(c(TRUE, FALSE), nrow(data), replace = TRUE, prob = c(prob_train, 1 - prob_train))
+    train = data[sample, ]
+    test = data[!sample, ]
+    
+    # Fit the decision tree model with max depth `n`
+    fit <- rpart(X8 ~ ., data = train, maxdepth = n)
+    
+    # Get actual values and predictions for train and test sets
+    y_train = train[, 8]
+    y_test = test[, 8]
+    y_train_fit = predict(fit)
+    y_test_fit = predict(fit, test)
+    
+    # Calculate mean squared errors (MSE) for train and test sets
+    e_train = (y_train - y_train_fit)^2
+    e_test = (y_test - y_test_fit)^2
+    
+    # Calculate R-squared for train and test sets
+    tr_ms = mean(unlist(e_train))
+    te_ms = mean(unlist(e_test))
+    tr_rsq = var(unlist(y_train_fit)) / var(unlist(y_train))
+    te_rsq = var(unlist(y_test_fit)) / var(unlist(y_test))
+    
+    # Return a list with training and test MSE and R-squared
+    output = list()
+    output$train_mse = tr_ms
+    output$test_mse = te_ms
+    output$train_R.sq = tr_rsq
+    output$test_R.sq = te_rsq
+    return(output)
+  }
+  
+  # Function to fit decision tree for each depth and calculate average metrics over splits
+  RT = function(data, n_depth) {
+    Result = sapply(seq(1, n_split), DT, data = DATA, n = n_depth)
+    my.list = list()
+    my.list$depth = n_depth
+    my.list$train_mse = mean(unlist(Result['train_mse', ]))
+    my.list$test_mse = mean(unlist(Result['test_mse', ]))
+    my.list$train_R.sq = mean(unlist(Result['train_R.sq', ]))
+    my.list$test_R.sq = mean(unlist(Result['test_R.sq', ]))
+    return(my.list)
+  }
+  
+  # Apply the RT function over the range of depths from 1 to `depth`
+  DRT = sapply(seq(1, depth), RT, data = DATA)
+  
+  # Create a data frame for results (MSE, R-squared, Null model comparisons)
+  output = data.frame(
+    Depth = unlist(DRT['depth', ]),
+    Train_MSE = unlist(DRT['train_mse', ]),
+    Test_MSE = unlist(DRT['test_mse', ]),
+    Train_R.sq = unlist(DRT['train_R.sq', ]),
+    Test_R.sq = unlist(DRT['test_R.sq', ]),
+    Null_Train_MSE = as.numeric(NullFunction(data)$avg_MSE["Train"]),
+    Null_Test_MSE = as.numeric(NullFunction(data)$avg_MSE["Test"])
+  )
+  
+  # Output list initialization
+  O = list()
+  
+  # Result table for Train MSE, Test MSE, Train R-squared, and Test R-squared
+  O$Result = output[, seq(1, 5)]
+  
+  # R-squared plot using plotly
+  O$R_sq = plot_ly(output, x = ~Depth) %>%
+    add_lines(y = ~Train_R.sq, name = "Training R-sq", line = list(color = 'blue')) %>%
+    add_lines(y = ~Test_R.sq, name = "Testing R-sq", line = list(color = 'red')) %>%
+    layout(title = "R-squared vs Tree Depth", xaxis = list(title = 'Depth'), yaxis = list(title = 'R-squared'))
+  
+  # MSE plot using plotly
+  O$MSE = plot_ly(output, x = ~Depth) %>%
+    add_lines(y = ~Train_MSE, name = "Training MSE", line = list(color = 'blue')) %>%
+    add_lines(y = ~Test_MSE, name = "Testing MSE", line = list(color = 'red')) %>%
+    add_lines(y = ~Null_Train_MSE, name = "Null Train MSE", line = list(dash = 'dot', color = 'green')) %>%
+    add_lines(y = ~Null_Test_MSE, name = "Null Test MSE", line = list(dash = 'dot', color = 'orange')) %>%
+    layout(title = "Mean Squared Error vs Tree Depth", xaxis = list(title = 'Depth'), yaxis = list(title = 'MSE'))
+  
+  return(O)
+}
+
+RGT <- Reg_Tree(abalone)
+```
+
+The average training and testing MSE for the regression tree model with a maximum depth of 7 are as follows:
+```{r}
+RGT$Result %>% kbl(align = rep("c",2)  ) %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), 
+                full_width = F, position = "center")
+
+```
+
+The R-squared plot for the regression tree model with a maximum depth of 7 is shown below:
+```{r}
+RGT$R_sq
+```
+
+The MSE plot for the regression tree model with a maximum depth of 7 is shown below:
+```{r}
+RGT$MSE
+
+```
+
+
+# Random Forest regression with number of trees = 3, 10, 30, 100, 300
+
+Random Forest is an ensemble learning method that combines multiple decision trees to create a more robust and accurate model. In this case, we will fit a Random Forest regression model with the number of trees equal to 3, 10, 30, 100, and 300 and calculate the average training and testing MSE.
+
+
+```{r comment=NA}
+Random_Forest = function(data,prob_train1 = 0.9,n_split1=15 )
+{
+k = c(3,10,30,100,300)
+RF = function(n_tree,prob_train = prob_train1 ,data,i)
+{
+  data = data.frame(data[[i]])
+  sample <- sample(c(TRUE, FALSE), nrow(data),
+                   replace=TRUE, prob=c(prob_train,1-prob_train))
+  train = data[sample, ]
+  test = data[!sample, ]
+  fit = randomForest(X8 ~., data = train ,  ntree = n_tree )
+  y_train = train[,8]
+  y_test = test[,8]
+  y_train_fit = predict(fit,train)
+  y_test_fit = predict(fit,test) 
+  e_train = (y_train - y_train_fit)^2
+  e_test = (y_test - y_test_fit)^2
+  tr_ms = mean(unlist(e_train))
+  te_ms = mean(unlist(e_test))
+  tr_rsq = var(unlist(y_train_fit))/var(unlist(y_train))
+  te_rsq = var(unlist(y_test_fit))/var(unlist(y_test))
+  output  = list()
+  output$train_mse = tr_ms 
+  output$test_mse= te_ms
+  output$train_R.sq= tr_rsq 
+  output$test_R.sq=te_rsq 
+  return(output)
+}
+RF_out <- function(data,num_split=n_split1,n_tree=n_tree1,prob_train = prob_train1)
+{
+ DATA =  splitSample(data,div = num_split)
+ Result = sapply(seq(1,num_split),RF,
+                 data=DATA,n_tree=n_tree,prob_train = prob_train)
+ my.list=list()
+ my.list$num_Tree = n_tree
+ my.list$train_mse = mean(unlist(Result['train_mse',]))
+ my.list$test_mse = mean(unlist(Result['test_mse',]))
+ my.list$train_R.sq = mean(unlist(Result['train_R.sq',]))
+ my.list$test_R.sq = mean(unlist(Result['test_R.sq',]))
+ return(my.list)
+}
+
+
+DRT = sapply(k,RF_out,data = abalone,
+             num_split=n_split1,prob_train = prob_train1)
+
+output=data.frame(k,unlist(DRT['train_mse',]),unlist(DRT['test_mse',])
+                  ,unlist(DRT['train_R.sq',]),unlist(DRT['test_R.sq',]))
+names(output) = c("Number.Tree","Train_MSE","Test_MSE","Train_R.sq","Test_R.sq")
+
+return(output)
+}
+
+RFR <- Random_Forest(abalone)
+```
+
+The average training and testing MSE for the Random Forest regression model with different numbers of trees are as follows:
+```{r}
+RFR %>% kbl(align = rep("c",2)  ) %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), 
+                full_width = F, position = "center")
+```
+
+
+
+
+
+
+ 
+ 

@@ -1,0 +1,296 @@
+---
+title: " Threshold Induced Selection Operator"
+author: "Arnab Aich"
+output: 
+  html_document:
+    toc: true
+    highlight: tango
+    code_folding: hide
+    fig_width: 8
+    fig_height: 6
+    fig_align: "center"
+    self_contained: true
+    toc_depth: 3
+    toc_float:
+      collapsed: true
+---
+
+<link rel="stylesheet" type="text/css" href="../../styles.css">
+
+
+```{r,include=FALSE}
+knitr::opts_chunk$set(
+	message = FALSE,
+	warning = FALSE,
+	comment = NA,
+	echo = TRUE
+)
+```
+
+# Introduction
+
+In this document, we will implement a Threshold Induced Selection Operator (TISP) algorithm on the **Gisette**, **Madelon** and **Dexter** datasets. TISP is a feature selection algorithm that aims to find the subset of features that maximizes the classification accuracy of a model. It works by iteratively removing features that do not contribute to the model's performance.
+
+## Loading required Libraries and functions
+
+```{r}
+# List of all required libraries
+libraries <- c("readr", "readsparse", "dplyr", "stargazer", "caret", "pROC", "ggplot2", "gridExtra", "parallel", "doParallel", "doSNOW","plotly","kableExtra","here")
+
+# Load and install libraries if necessary
+invisible(lapply(libraries, function(pkg) {
+  if (!require(pkg, character.only = TRUE)) {
+    install.packages(pkg)
+    library(pkg, character.only = TRUE)
+  }
+}))
+source(here("TISP/Functions.R"))
+
+```
+
+# Gisette Data
+
+## Import Dataset
+```{r}
+train_X <- read_table(here("Datasets/Gisette/gisette_train.data"),
+    col_names = FALSE
+  )
+
+test_X <- read_table(here("Datasets/Gisette/gisette_valid.data"),
+    col_names = FALSE
+  )
+
+train_Y <- read_csv(here("Datasets/Gisette/gisette_train.labels"),
+    col_names = FALSE
+  )
+test_Y <- read_csv(here("Datasets/Gisette/gisette_valid.labels"),
+    col_names = FALSE
+  )
+```
+## Setting Up data
+```{r}
+test_Y[test_Y== -1] = 0
+train_Y[train_Y== -1] = 0
+x_mean=as.numeric(colMeans(train_X[,-5001]))
+x_sd =as.numeric(apply(train_X[,-5001],2,sd))
+X = rbind(scale(train_X[, -5001],center=x_mean,scale=x_sd),
+          scale(test_X[, -5001],center=x_mean,scale=x_sd))
+X = X[, colSums(is.na(X)) == 0]
+X_train = X[1:6000, ]
+X_train = cbind(X0 = rep(1, nrow(X_train)), X_train)
+data_train = list(y = as.matrix(train_Y), x = as.matrix(X_train))
+X_test = X[6001:7000, ]
+X_test =  cbind(X0 = rep(1, nrow(X_test)), X_test)
+data_test = list(y = as.matrix(test_Y), x = as.matrix(X_test))
+```
+## Missclasification Error plot for approximately 100 feature vs iteration
+```{r }
+eta=1/nrow(data_train$y)
+mplot = Miss_plot(100,2265200,eta,data=data_train)
+ggplotly(mplot)
+```
+
+## Roc plot for approximately 500 feature
+```{r message=FALSE, warning=FALSE}
+rplot = Roc_plot(100,2265200,eta=1/nrow(data_train$y),data_train,data_test)
+ggplotly(rplot)
+```
+
+
+## Table for train and test missclasification, lambda and number of feature
+```{r }
+lambda_all = c(4732159,4623500,2265200,1559300,1219900)
+my.cluster <- makeCluster(10)
+registerDoParallel(my.cluster)
+clusterExport(my.cluster,c("TISP","data_train","data_test")
+              ,envir = .GlobalEnv)
+invisible(clusterEvalQ(my.cluster,
+             {library(dplyr)
+               library(stargazer)
+               library(caret)
+               library(pROC)
+             }))
+u=parSapply(my.cluster,lambda_all,TISP,100,data_train,data_test)
+stopCluster(my.cluster)
+
+D=data.frame(t(u))
+
+D %>%  kbl(align = rep("c",nrow(D))  ) %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"),full_width = F)
+
+```
+## Plot for training vs test Misclassification over number of features
+```{r message=FALSE, warning=FALSE , comment=NA}
+
+ggplotly(ggplot(D,aes(x= as.numeric(unlist(D['Feature']))))+
+        geom_line(aes(y = as.numeric(unlist(D['Miss.Train'])),color = "Training"))+
+        geom_line(aes(y = as.numeric(unlist(D['Miss.Test'])),color = "Testing"))+
+        ylim(0,0.2) + ylab('Misclassification Error')+ xlab('Number of Feature'))
+```
+
+
+
+```{r include=FALSE}
+rm(data_train)
+rm(data_test)
+rm(lambda_all)
+```
+
+
+# Madelon Data
+
+## Import Dataset
+```{r }
+train_X<- read_table(here("Datasets/MADELON/madelon_train.data"),col_names = FALSE)
+train_Y<- read_table(here("Datasets/MADELON/madelon_train.labels"),col_names = FALSE)
+test_X <- read_table(here("Datasets/MADELON/madelon_valid.data"),col_names = FALSE)
+test_Y <- read_table(here("Datasets/MADELON/madelon_valid.labels"),col_names = FALSE)
+
+```
+## Setting Up data
+```{r}
+train_X=train_X[,-501]
+test_X=test_X[,-501]
+test_Y[test_Y== -1] = 0
+train_Y[train_Y== -1] = 0
+x_mean=as.numeric(colMeans(train_X))
+x_sd =as.numeric(apply(train_X,2,sd))
+
+X = rbind(scale(train_X,center=x_mean,scale=x_sd),
+          scale(test_X,center=x_mean,scale=x_sd))
+X = X[, colSums(is.na(X)) == 0]
+
+
+X_train = X[1:2000, ]
+X_train = cbind(X0 = rep(1, nrow(X_train)), X_train)
+
+data_train = list(y = as.matrix(train_Y), x = as.matrix(X_train))
+X_test = X[2001:2600, ]
+X_test =  cbind(X0 = rep(1, nrow(X_test)), X_test)
+data_test = list(y = as.matrix(test_Y), x = as.matrix(X_test))
+
+```
+## Missclasification Error plot for approximately 100 feature vs iteration
+```{r}
+eta=1/nrow(data_train$y)
+ggplotly(Miss_plot(100,lambda=110290,eta,data=data_train))
+```
+
+## Roc plot for approximately 500 feature
+```{r}
+ggplotly(Roc_plot(100,lambda=1098,eta=1/nrow(data_train$y),data_train,data_test))
+```
+
+
+## Table for train and test missclasification, lambda and number of feature
+```{r message=FALSE, warning=FALSE , comment=NA}
+lambda_all = c(208475,136476,110290,54595,1098)
+my.cluster <- makeCluster(5)
+registerDoParallel(my.cluster)
+clusterExport(my.cluster,c("TISP","data_train","data_test")
+              ,envir = .GlobalEnv)
+invisible(clusterEvalQ(my.cluster,
+             {library(dplyr)
+               library(stargazer)
+               library(caret)
+               library(pROC)
+             }))
+u=parSapply(my.cluster,lambda_all,TISP,100,data_train,data_test)
+stopCluster(my.cluster)
+D=data.frame(t(u))
+
+D %>%  kbl(align = rep("c",nrow(D))  ) %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"),full_width = F)
+
+```
+## Plot for training vs test Misclassification over number of features
+```{r message=FALSE, warning=FALSE , comment=NA}
+ggplotly(ggplot(D,aes(x= as.numeric(unlist(D['Feature']))))+
+        geom_line(aes(y = as.numeric(unlist(D['Miss.Train'])),color = "Training"))+
+        geom_line(aes(y = as.numeric(unlist(D['Miss.Test'])),color = "Testing"))+
+        ylim(0,0.6) + ylab('Misclassification Error')+ xlab('Number of Feature'))
+```
+
+```{r include=FALSE}
+rm(lambda_all)
+rm(data_train)
+rm(data_test)
+```
+
+
+
+# Dexter Data
+
+  
+## Import Dataset
+
+```{r}
+train <-read.csv(here("Datasets/dexter/dexter_train.csv"),header = FALSE)
+
+train_y <- as.matrix(read_csv(here("Datasets/dexter/dexter_train.labels"),
+                              col_names = FALSE))
+test <-read.csv(here("Datasets/dexter/dexter_valid.csv"),header = FALSE)
+test_y <- as.matrix(read_csv(here("Datasets/dexter/dexter_valid.labels"),
+                             col_names = FALSE))
+```
+
+
+## Setting Up data
+
+```{r}
+# train mean and sd
+x_mean=as.numeric(colMeans(as.matrix(train)))
+x_sd =as.numeric(apply(as.matrix(train),2,sd))
+
+# Rename labels
+train_y[train_y== -1] = 0
+test_y[test_y== -1] = 0
+#setup data
+train <- as.matrix(cbind(rep(1,nrow(train)),scale(train,x_mean,x_sd)))
+test <- as.matrix(cbind(rep(1,nrow(test)),scale(test,x_mean,x_sd)))
+
+X = rbind(train, test)
+X = X[, colSums(is.na(X)) == 0]
+data_train = list(y=train_y,x=as.matrix(X[1:300,]))
+data_test= list(y=test_y,x=as.matrix(X[301:600,]))
+```
+
+
+## Missclasification Error plot for approximately 100 feature vs iteration
+
+```{r}
+ggplotly(Miss_plot(100,4213,1/nrow(data_train$y),data_train))
+```
+
+## Roc plot for approximately 500 feature
+
+```{r}
+ggplotly(Roc_plot(100,lambda=4213,eta=1/nrow(data_train$y),data_train,data_test))
+```
+
+## Table for train and test missclasification, lambda and number of feature
+```{r }
+lambda_all = c(9912,7313,6155,5040.268,4213)
+my.cluster <- makeCluster(5)
+registerDoParallel(my.cluster)
+clusterExport(my.cluster,c("TISP","data_train","data_test")
+              ,envir = .GlobalEnv)
+invisible(clusterEvalQ(my.cluster,
+             {library(dplyr)
+               library(stargazer)
+               library(caret)
+               library(pROC)
+             }))
+u=parSapply(my.cluster,lambda_all,TISP,100,data_train,data_test)
+stopCluster(my.cluster)
+D=data.frame(t(u))
+
+D %>%  kbl(align = rep("c",nrow(D))  ) %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"),full_width = F)
+
+```
+## Plot for training vs test Misclassification over number of features
+```{r }
+ggplotly(ggplot(D,aes(x= as.numeric(unlist(D['Feature']))))+
+        geom_line(aes(y = as.numeric(unlist(D['Miss.Train'])),color = "Training"))+
+        geom_line(aes(y = as.numeric(unlist(D['Miss.Test'])),color = "Testing"))+
+        ylim(0,0.6) + ylab('Misclassification Error')+ xlab('Number of Feature'))
+```
+

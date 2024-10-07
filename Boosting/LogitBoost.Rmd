@@ -1,0 +1,139 @@
+---
+title: "Logitboost with Regression Weak Classifier"
+author: "Arnab Aich"
+output: 
+  html_document:
+    toc: true
+    highlight: tango
+    code_folding: hide
+    fig_width: 8
+    fig_height: 6
+    fig_align: "center"
+    self_contained: true
+    toc_depth: 3
+    toc_float:
+      collapsed: true
+---
+
+<link rel="stylesheet" type="text/css" href="../styles.css">
+
+# Introuction
+In this document, we will implement a LogitBoost algorithm with regression weak classifier on **Gisette** and **Madelon** dataset. LogitBoost is a boosting algorithm that is used for binary classification. It is an ensemble learning method that combines multiple weak classifiers to create a strong classifier. The weak classifiers are trained sequentially, and each subsequent classifier is trained to correct the errors made by the previous classifiers. The final prediction is made by combining the predictions of all the weak classifiers.
+
+
+```{r,include=FALSE}
+knitr::opts_chunk$set(
+	message = FALSE,
+	warning = FALSE,
+	comment = NA,
+	echo = TRUE
+)
+```
+
+## Loading required Libraries and Functions
+```{r}
+packages = c("parallel","doParallel","foreach","doSNOW","readr","readsparse","dplyr","pROC","tidyverse","pROC","mboost","ggplot2","gridExtra","plotly","kableExtra","here","rpart","caTools")
+invisible(lapply(packages, require, character.only = TRUE))
+source(here("Boosting/Functions.R"))
+
+# number of Boosting Iterations
+boost_iter = c(10,30,100,300,500)
+
+```
+
+
+# Gisette Data
+  
+##  Import and setup dataset
+```{r}
+train_X <- read_table(here("Datasets/Gisette/gisette_train.data"),
+    col_names = FALSE)
+test_X <- read_table(here("Datasets/Gisette/gisette_valid.data"),
+    col_names = FALSE)
+train_Y <- read_csv(here("Datasets/Gisette/gisette_train.labels"),
+    col_names = FALSE)
+test_Y <- read_csv(here("Datasets/Gisette/gisette_valid.labels"),
+    col_names = FALSE)
+
+x_mean=as.numeric(colMeans(train_X[,-5001]))
+x_sd =as.numeric(apply(train_X[,-5001],2,sd))
+X = rbind(scale(train_X[, -5001],center=x_mean,scale=x_sd),
+          scale(test_X[, -5001],center=x_mean,scale=x_sd))
+X = X[, colSums(is.na(X)) == 0]
+X_train = X[1:6000, ]
+data_train = list(y = as.matrix(train_Y), x = as.matrix(X_train))
+X_test = X[6001:7000, ]
+data_test = list(y = as.matrix(test_Y), x = as.matrix(X_test))
+```
+
+## Results
+```{r}
+R = Final_LBoost(boost_iter,data_train,data_test,n_cores=5)
+
+R$Result %>% as.data.frame() %>%
+  kable(align = rep("c", ncol(R$Result))) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width = F, position = "center")
+
+ggplotly(R$Misclassification.plot)
+
+ggplotly(R$loss_4_500)
+
+ggplotly(R$roc_4_100)
+```
+
+```{r warning=FALSE, include=FALSE}
+rm(data_train)
+rm(data_test)
+rm(train_X)
+rm(test_X)
+rm(train_Y)
+rm(test_Y)
+rm(D)
+```
+
+
+# Madelon Data
+ 
+## Import and setup Dataset
+```{r}
+train_X<- read_table(here("Datasets/MADELON/madelon_train.data"),
+                col_names = FALSE)
+train_Y<- read_table(here("Datasets/MADELON/madelon_train.labels"),
+                col_names = FALSE)
+test_X <- read_table(here("Datasets/MADELON/madelon_valid.data"), 
+                col_names = FALSE)
+test_Y <- read_table(here("Datasets/MADELON/madelon_valid.labels"), 
+                col_names = FALSE)
+
+train_X=train_X[,-501]
+test_X=test_X[,-501]
+x_mean=as.numeric(colMeans(train_X))
+x_sd =as.numeric(apply(train_X,2,sd))
+
+X = rbind(scale(train_X,center=x_mean,scale=x_sd),
+          scale(test_X,center=x_mean,scale=x_sd))
+X = X[, colSums(is.na(X)) == 0]
+X_train = X[1:2000, ]
+data_train= list(y = as.matrix(train_Y), x = as.matrix(X_train))
+X_test = X[2001:2600, ]
+data_test = list(y = as.matrix(test_Y), x = as.matrix(X_test))
+```
+
+
+## Results
+```{r}
+R = Final_LBoost(boost_iter,data_train,data_test,n_cores=5)
+
+R$Result %>% as.data.frame() %>%
+  kable(align = rep("c", ncol(R$Result))) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width = F, position = "center")
+
+ggplotly(R$Misclassification.plot)
+
+ggplotly(R$loss_4_500)
+
+ggplotly(R$roc_4_100)
+
+```
+
+
