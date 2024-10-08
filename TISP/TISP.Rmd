@@ -91,8 +91,8 @@ ggplotly(mplot)
 ```
 
 ## Roc plot for approximately 500 feature
-```{r message=FALSE, warning=FALSE}
-rplot = Roc_plot(100,2265200,eta=1/nrow(data_train$y),data_train,data_test)
+```{r }
+rplot = Roc_plot(500,2265200,eta=1/nrow(data_train$y),data_train,data_test)
 ggplotly(rplot)
 ```
 
@@ -100,7 +100,7 @@ ggplotly(rplot)
 ## Table for train and test missclasification, lambda and number of feature
 ```{r }
 lambda_all = c(4732159,4623500,2265200,1559300,1219900)
-my.cluster <- makeCluster(10)
+my.cluster <- makeCluster(5)
 registerDoParallel(my.cluster)
 clusterExport(my.cluster,c("TISP","data_train","data_test")
               ,envir = .GlobalEnv)
@@ -110,7 +110,7 @@ invisible(clusterEvalQ(my.cluster,
                library(caret)
                library(pROC)
              }))
-u=parSapply(my.cluster,lambda_all,TISP,100,data_train,data_test)
+u=parSapply(my.cluster,lambda_all,TISP,500,data_train,data_test)
 stopCluster(my.cluster)
 
 D=data.frame(t(u))
@@ -177,7 +177,7 @@ ggplotly(Miss_plot(100,lambda=110290,eta,data=data_train))
 
 ## Roc plot for approximately 500 feature
 ```{r}
-ggplotly(Roc_plot(100,lambda=1098,eta=1/nrow(data_train$y),data_train,data_test))
+ggplotly(Roc_plot(500,lambda=1098,eta=1/nrow(data_train$y),data_train,data_test))
 ```
 
 
@@ -194,7 +194,7 @@ invisible(clusterEvalQ(my.cluster,
                library(caret)
                library(pROC)
              }))
-u=parSapply(my.cluster,lambda_all,TISP,100,data_train,data_test)
+u=parSapply(my.cluster,lambda_all,TISP,500,data_train,data_test)
 stopCluster(my.cluster)
 D=data.frame(t(u))
 
@@ -263,7 +263,7 @@ ggplotly(Miss_plot(100,4213,1/nrow(data_train$y),data_train))
 ## Roc plot for approximately 500 feature
 
 ```{r}
-ggplotly(Roc_plot(100,lambda=4213,eta=1/nrow(data_train$y),data_train,data_test))
+ggplotly(Roc_plot(500,lambda=4213,eta=1/nrow(data_train$y),data_train,data_test))
 ```
 
 ## Table for train and test missclasification, lambda and number of feature
@@ -279,7 +279,7 @@ invisible(clusterEvalQ(my.cluster,
                library(caret)
                library(pROC)
              }))
-u=parSapply(my.cluster,lambda_all,TISP,100,data_train,data_test)
+u=parSapply(my.cluster,lambda_all,TISP,500,data_train,data_test)
 stopCluster(my.cluster)
 D=data.frame(t(u))
 

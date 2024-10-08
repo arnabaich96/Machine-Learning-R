@@ -25,7 +25,8 @@ knitr::opts_chunk$set(
 	echo = TRUE
 )
 # Required libraries
-lapply( c("readr", "caret", "ggplot2", "plotly", "parallel", "here", "doParallel", "rpart", "randomForest", "kableExtra", "knitr", "reshape2"),require ,character.only=TRUE)
+packages <- c("readr", "caret", "ggplot2", "plotly", "parallel", "here", "doParallel", "rpart", "randomForest", "kableExtra", "knitr", "reshape2")
+lapply( packages,require ,character.only=TRUE)
 set.seed(123)
 ```
 

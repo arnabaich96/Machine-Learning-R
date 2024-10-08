@@ -126,7 +126,7 @@ data_test = list(y = as.matrix(test_Y), x = as.matrix(X_test))
 
 
 ```{r Computation}
-r = logistic(300, data_train, data_test, eta = 0.001)
+r = logistic(500, data_train, data_test, eta = 0.001)
 
 ggplotly(r$ROC.plot)
 

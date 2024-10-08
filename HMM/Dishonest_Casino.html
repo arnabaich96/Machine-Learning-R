@@ -667,7 +667,96 @@ display: none;
 </div>
 
 
-<p><style type="text/css">body {font-family: 'Helvetica Neue', Arial, sans-serif;font-size: 16px;background-color: #FAFAFA; color: #333;line-height: 1.8;margin: 0;padding: 20px;}.title {font-family: 'Segoe UI', sans-serif; color: #222;text-align: center;font-size: 32px; font-weight: 300; margin-top: 20px;margin-bottom: 20px;letter-spacing: 0.5px; }.container-fluid {max-width: 95%;margin: auto;box-shadow: 0 1px 3px rgba(0,0,0,0.12); padding: 20px;background: #FFF;border: 1px solid #E0E0E0; }h1, h2, h3, h4, h5, h6 {font-family: 'Arial', sans-serif;color: #444;font-weight: 400;}h1 {font-size: 28px;margin-bottom: 18px;}button {background-color: #5C6BC0; color: white;padding: 12px 24px;font-size: 14px;border-radius: 4px;border: none;box-shadow: 0 2px 4px rgba(0,0,0,0.16);transition: background-color 0.3s, box-shadow 0.3s, transform 0.2s;}button:hover {background-color: #3F51B5;box-shadow: 0 4px 6px rgba(0,0,0,0.24);transform: translateY(-2px); }.navbar {background-color: #2C3E50; color: white;padding: 12px 16px;text-align: center;position: sticky;top: 0;width: 100%;}.navbar a {color: white;padding: 12px 16px;text-decoration: none;}.navbar a:hover {background-color: #555;color: white;}a {color: #5C6BC0; text-decoration: none;}a:hover {color: #3F51B5;text-decoration: underline;}@media (max-width: 768px) {.navbar a, .title {padding: 10px;font-size: 20px; }}</style></p>
+<p><style type="text/css">
+body {
+font-family: 'Helvetica Neue', Arial, sans-serif;
+font-size: 16px;
+background-color: #FAFAFA; 
+color: #333;
+line-height: 1.8;
+margin: 0;
+padding: 20px;
+}
+.title {
+font-family: 'Segoe UI', sans-serif; 
+color: #222;
+text-align: center;
+font-size: 32px; 
+font-weight: 300; 
+margin-top: 20px;
+margin-bottom: 20px;
+letter-spacing: 0.5px; 
+}
+.container-fluid {
+max-width: 95%;
+margin: auto;
+box-shadow: 0 1px 3px rgba(0,0,0,0.12); 
+padding: 20px;
+background: #FFF;
+border: 1px solid #E0E0E0; 
+}
+
+h1, h2, h3, h4, h5, h6 {
+font-family: 'Arial', sans-serif;
+color: #444;
+font-weight: 400;
+}
+h1 {
+font-size: 28px;
+margin-bottom: 18px;
+}
+
+button {
+background-color: #5C6BC0; 
+color: white;
+padding: 12px 24px;
+font-size: 14px;
+border-radius: 4px;
+border: none;
+box-shadow: 0 2px 4px rgba(0,0,0,0.16);
+transition: background-color 0.3s, box-shadow 0.3s, transform 0.2s;
+}
+button:hover {
+background-color: #3F51B5;
+box-shadow: 0 4px 6px rgba(0,0,0,0.24);
+transform: translateY(-2px); 
+}
+
+.navbar {
+background-color: #2C3E50; 
+color: white;
+padding: 12px 16px;
+text-align: center;
+position: sticky;
+top: 0;
+width: 100%;
+}
+.navbar a {
+color: white;
+padding: 12px 16px;
+text-decoration: none;
+}
+.navbar a:hover {
+background-color: #555;
+color: white;
+}
+
+a {
+color: #5C6BC0; 
+text-decoration: none;
+}
+a:hover {
+color: #3F51B5;
+text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+.navbar a, .title {
+padding: 10px;
+font-size: 20px; 
+}
+}
+</style></p>
 <div id="introduction" class="section level1">
 <h1>Introduction</h1>
 <p>In this document, we will implement a Hidden Markov Model (HMM) for
@@ -800,7 +889,7 @@ stationary distribution to Transition Probability matrix)</p>
 <pre class="r"><code>p = t(casinoModelEst$hmm$transProbs)
 P &lt;- t(p[,1]/sum(p[,1]) )
 P %&gt;% round(3) %&gt;% kbl(align = rep(&quot;c&quot;,nrow(p))  ) %&gt;% kable_styling(bootstrap_options = c(&quot;striped&quot;, &quot;hover&quot;, &quot;condensed&quot;, &quot;responsive&quot;),full_width = F)</code></pre>
-<table class="table table-striped table-hover table-condensed table-responsive" style="color: black; width: auto !important; margin-left: auto; margin-right: auto;">
+<table class="table table-striped table-hover table-condensed table-responsive" style="width: auto !important; margin-left: auto; margin-right: auto;">
 <thead>
 <tr>
 <th style="text-align:center;">
@@ -824,7 +913,7 @@ Loaded
 </table>
 <p><span class="math inline">\(\mathbf{a=}\)</span></p>
 <pre class="r"><code>casinoModelEst$hmm$transProbs  %&gt;% kbl(align = rep(&quot;c&quot;,nrow(casinoModelEst$hmm$transProbs))  ) %&gt;% kable_styling(bootstrap_options = c(&quot;striped&quot;, &quot;hover&quot;, &quot;condensed&quot;, &quot;responsive&quot;),full_width = F)</code></pre>
-<table class="table table-striped table-hover table-condensed table-responsive" style="color: black; width: auto !important; margin-left: auto; margin-right: auto;">
+<table class="table table-striped table-hover table-condensed table-responsive" style="width: auto !important; margin-left: auto; margin-right: auto;">
 <thead>
 <tr>
 <th style="text-align:left;">
@@ -864,7 +953,7 @@ Loaded
 </table>
 <p><span class="math inline">\(\mathbf{b=}\)</span></p>
 <pre class="r"><code>casinoModelEst$hmm$emissionProbs %&gt;% kbl(align = rep(&quot;c&quot;,nrow(casinoModelEst$hmm$emissionProbs))  ) %&gt;% kable_styling(bootstrap_options = c(&quot;striped&quot;, &quot;hover&quot;, &quot;condensed&quot;, &quot;responsive&quot;),full_width = F)</code></pre>
-<table class="table table-striped table-hover table-condensed table-responsive" style="color: black; width: auto !important; margin-left: auto; margin-right: auto;">
+<table class="table table-striped table-hover table-condensed table-responsive" style="width: auto !important; margin-left: auto; margin-right: auto;">
 <thead>
 <tr>
 <th style="text-align:left;">
